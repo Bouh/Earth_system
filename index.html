@@ -11,9 +11,9 @@
 		<style>
 			body {
 				font-family: Monospace;
-background-color:black;
-background-image:url(img/sky.jpg);
-background-repeat:repeat;
+				background-color:black;
+				background-image:url(img/sky.jpg);
+				background-repeat:repeat;
 				margin: 0px;
 				overflow: hidden;
 			}
@@ -35,6 +35,7 @@ background-repeat:repeat;
 			<a href="http://threejs.org" target="_blank">three.js</a> - Earth Clickkkk - <a href="http://www.witly.fr/portfolio" target="_blank">Aurélien Vivet</a>
 		</div>
 
+		<img src="img/glow.png" style="display:none;">
 
 		<script>
 
@@ -80,6 +81,8 @@ background-repeat:repeat;
 				Orbitcontrols = new THREE.OrbitControls( camera );
 				
 				scene = new THREE.Scene();
+				
+				glow();
 				
 				// light
 				var light = new THREE.PointLight( "white", 1, 100 );
@@ -179,7 +182,7 @@ background-repeat:repeat;
 				//scene.add( arrowHelper );
 				/*
 				*/
-				glow();
+				
 			}
 			
 			function glow(){
