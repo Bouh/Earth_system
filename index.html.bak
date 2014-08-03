@@ -102,11 +102,12 @@ background-repeat:repeat;
 				geo = new THREE.SphereGeometry(Earth_radius, Earth_segment, Earth_segment);
 				
 				var Earth_material	= new THREE.MeshPhongMaterial({
-					map		: THREE.ImageUtils.loadTexture("./img/bigmap.jpg"),
-					//bumpMap		: THREE.ImageUtils.loadTexture("./img/mages/earthbump1k.jpg"),
-					//bumpScale	: 0.05,
-					//specularMap	: THREE.ImageUtils.loadTexture("./img/earthspec1k.jpg"),
+					map		: THREE.ImageUtils.loadTexture("img/earthmap1k.jpg"),
+					bumpMap		: THREE.ImageUtils.loadTexture("img/mages/earthbump1k.jpg"),
+					bumpScale	: 0.05,
+					specularMap	: THREE.ImageUtils.loadTexture("img/earthspec1k.jpg"),
 					specular	: new THREE.Color('grey'),
+					shininess	: 5,
 				})
 	
 				earth = new THREE.Mesh( geo, Earth_material );
@@ -119,7 +120,7 @@ background-repeat:repeat;
 				
 				//Render
 				
-				renderer = new THREE.WebGLRenderer({antialias: true});
+				renderer = new THREE.WebGLRenderer({antialias: true, alpha: true });
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				
 				container.appendChild( renderer.domElement );
