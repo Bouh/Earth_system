@@ -1,0 +1,11 @@
+body{
+	margin:0px;
+}
+
+#info{
+	position: absolute;
+	margin: 0 80px;
+	background-color: rgba(255, 255, 255, 0.34);
+	width: 322px;
+	font-family: sans-serif;
+}

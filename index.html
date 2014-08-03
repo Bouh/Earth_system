@@ -1,79 +1,231 @@
-<!DOCTYPE html>
-<html>
+<html lang="en"><head>
+		<script src="./lib/three67.min.js"></script>
+		<script src="./lib/OrbitControls.js"></script>
+		<script src="./lib/stats.min.js"></script>		
+		
+		<title>Earth Clickkkk</title>
+		
+		
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+background-color:black;
+background-image:url(img/sky.jpg);
+background-repeat:repeat;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: black;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: center;
+				z-index: 100;1
+				display:block;
+			}
+			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+		</style>
+	</head>
 
-  <head>
-    <meta charset='utf-8'>
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="description" content="Earth system : Click on the earth to add more clouds">
+	<body>
+		<div id="info">
+			<a href="http://threejs.org" target="_blank">three.js</a> - Earth Clickkkk - <a href="http://www.witly.fr/portfolio" target="_blank">Aurélien Vivet</a>
+		</div>
 
-    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
-    <title>Earth system</title>
-  </head>
+		<script>
 
-  <body>
+		/*
+		
+			pour le cloud mettre un mesh en forme de T avec le pied sur la terre.
+			DatGui pour l'ajout des points sur la terre et suppression modification
+			indexeddb ou cookie pour sauvegarde
+		
+		*/
+			var container = document.getElementsByTagName("canvas");
+			var camera, scene, renderer;
+			var stats = new Stats();
+			
+			var vector = new THREE.Vector3();
+			var mouse = { x: 1, y: 1 };
+			var projector = new THREE.Projector();
+			var	raycaster = new THREE.Raycaster();
+			var intersects;
+			var objectsClick = [];
+			
+			var Earth_segment = Earth_radius = 25;
+			var Cloud_radius = 0.5;
+			var Cloud_segment = 8;
+			
 
-    <!-- HEADER -->
-    <div id="header_wrap" class="outer">
-        <header class="inner">
-          <a id="forkme_banner" href="https://github.com/Bouh/Earth_system">View on GitHub</a>
 
-          <h1 id="project_title">Earth system</h1>
-          <h2 id="project_tagline">Click on the earth to add more clouds</h2>
+			init();
+			animate();
 
-            <section id="downloads">
-              <a class="zip_download_link" href="https://github.com/Bouh/Earth_system/zipball/master">Download this project as a .zip file</a>
-              <a class="tar_download_link" href="https://github.com/Bouh/Earth_system/tarball/master">Download this project as a tar.gz file</a>
-            </section>
-        </header>
-    </div>
+			function init() {
 
-    <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
-        <h3>
-<a name="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages"><span class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				
+				camera.name = "camera";
+				camera.position.x = 0;
+				camera.position.y = 30;
+				camera.position.z = -80;
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
-</code></pre>
+				Orbitcontrols = new THREE.OrbitControls( camera );
+				
+				scene = new THREE.Scene();
+				
+				// light
+				var light = new THREE.PointLight( "white", 1, 100 );
+				light.position.set( -26, -13, -20 );
+				scene.add( light );
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
+				//SUN
+				var directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
+				directionalLight.position.set( 1, 1, 0);
+				scene.add( directionalLight );
 
-<h3>
-<a name="designer-templates" class="anchor" href="#designer-templates"><span class="octicon octicon-link"></span></a>Designer Templates</h3>
+				//helper
+				var axisHelper = new THREE.AxisHelper( 15 );
+				scene.add( axisHelper );
+				
+				var pointLightHelper = new THREE.PointLightHelper( light, 1 );
+				scene.add( pointLightHelper );
 
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
 
-<h3>
-<a name="rather-drive-stick" class="anchor" href="#rather-drive-stick"><span class="octicon octicon-link"></span></a>Rather Drive Stick?</h3>
+				geo = new THREE.SphereGeometry(Earth_radius, Earth_segment, Earth_segment);
+				
+				var Earth_material	= new THREE.MeshPhongMaterial({
+					map		: THREE.ImageUtils.loadTexture("img/earthmap1k.jpg"),
+					bumpMap		: THREE.ImageUtils.loadTexture("img/earthbump1k.jpg"),
+					bumpScale	: 0.05,
+					specularMap	: THREE.ImageUtils.loadTexture("img/earthspec1k.jpg"),
+					specular	: new THREE.Color('grey'),
+					shininess	: 5,
+				})
+	
+				earth = new THREE.Mesh( geo, Earth_material );
+				
+				earth.name = "earth";
+				//object.rotation.x = -90* Math.PI / 180;
+				
+				scene.add(earth);
+				objectsClick.push(earth);
+				
+				//Render
+				
+				renderer = new THREE.WebGLRenderer({antialias: true, alpha: true });
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				
+				container.appendChild( renderer.domElement );
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
+				//Stats
+				
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+				container.appendChild( stats.domElement );
 
-<h3>
-<a name="authors-and-contributors" class="anchor" href="#authors-and-contributors"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				window.addEventListener( 'mouseup', click_on_sphere, false );
+				window.addEventListener( 'resize', onWindowResize, false );
+			}
+			
+			function add_cloud(arg_position){
+				geo = new THREE.SphereGeometry(Cloud_radius, Cloud_segment, Cloud_segment);
+				
+				Cloud_mat = new THREE.MeshLambertMaterial({
+					color: "white",
+					wireframe: false
+				});
+				cloud = new THREE.Mesh( geo, Cloud_mat );
+				
+				cloud.name = "Cloud";
+				//object.rotation.x = -90* Math.PI / 180;
+				cloud.position.set(arg_position.x, arg_position.y, arg_position.z);
+				
+				scene.add(cloud);
+			}
+			
+			function click_on_sphere(){
+				
+				vector.set( mouse.x, mouse.y, 0.1 );
+				projector.unprojectVector( vector, camera );
+				
+				var origin = camera.position;
+				var direction = vector.sub(camera.position).normalize();
+				var obstacles = objectsClick;
+				
+				var ray = new THREE.Raycaster( origin, direction);
+				var intersects = ray.intersectObjects( obstacles, false);
+				
+				if(intersects[0]){
+					
+					var position = intersects[0].point;
 
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
+					add_cloud(position);
+				
+				}
+				
+				var length = 25;
+				var color = "black";
 
-<h3>
-<a name="support-or-contact" class="anchor" href="#support-or-contact"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
+				//var arrowHelper = new THREE.ArrowHelper( direction, origin, length, color );
+				//scene.add( arrowHelper );
+				/*
+				*/
+				glow();
+			}
+			
+			function glow(){
+				var spriteMaterial = new THREE.SpriteMaterial({ 
+					map: new THREE.ImageUtils.loadTexture("img/glow.png"), 
+					useScreenCoordinates: false,
+					//alignment: THREE.SpriteAlignment.center,
+					color: 0x0000ff,
+					transparent: false,
+					blending: THREE.AdditiveBlending
+				});
+				var sprite = new THREE.Sprite( spriteMaterial );
+				sprite.scale.set(100, 100, 1.0);
+				scene.add(sprite);
+			}
+			
+			function onDocumentMouseMove( event ) {
 
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
-      </section>
-    </div>
+				event.preventDefault();
 
-    <!-- FOOTER  -->
-    <div id="footer_wrap" class="outer">
-      <footer class="inner">
-        <p class="copyright">Earth system maintained by <a href="https://github.com/Bouh">Bouh</a></p>
-        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
-      </footer>
-    </div>
+				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 
-    
+			}
+			
+			function onWindowResize() {
 
-  </body>
-</html>
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+			
+			function animate() {
+				Orbitcontrols.update();
+				stats.update();
+				requestAnimationFrame( animate );
+				render();
+			}
+
+			function render() {
+			
+				vector.set( mouse.x, mouse.y, 0.1 );
+				projector.unprojectVector( vector, camera );
+				renderer.setClearColor( 0x000000, 0 );//couleur de fond du canvas
+				renderer.render( scene, camera );
+			}
+
+		</script>
+</body></html>
