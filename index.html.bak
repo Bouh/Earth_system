@@ -83,7 +83,7 @@ background-repeat:repeat;
 				
 				// light
 				var light = new THREE.PointLight( "white", 1, 100 );
-				light.position.set( 0, 20, 20 );
+				light.position.set( -26, -13, -20 );
 				scene.add( light );
 
 				//SUN
@@ -103,7 +103,7 @@ background-repeat:repeat;
 				
 				var Earth_material	= new THREE.MeshPhongMaterial({
 					map		: THREE.ImageUtils.loadTexture("img/earthmap1k.jpg"),
-					bumpMap		: THREE.ImageUtils.loadTexture("img/mages/earthbump1k.jpg"),
+					bumpMap		: THREE.ImageUtils.loadTexture("img/earthbump1k.jpg"),
 					bumpScale	: 0.05,
 					specularMap	: THREE.ImageUtils.loadTexture("img/earthspec1k.jpg"),
 					specular	: new THREE.Color('grey'),
@@ -179,6 +179,21 @@ background-repeat:repeat;
 				//scene.add( arrowHelper );
 				/*
 				*/
+				glow();
+			}
+			
+			function glow(){
+				var spriteMaterial = new THREE.SpriteMaterial({ 
+					map: new THREE.ImageUtils.loadTexture("img/glow.png"), 
+					useScreenCoordinates: false,
+					//alignment: THREE.SpriteAlignment.center,
+					color: 0x0000ff,
+					transparent: false,
+					blending: THREE.AdditiveBlending
+				});
+				var sprite = new THREE.Sprite( spriteMaterial );
+				sprite.scale.set(200, 200, 1.0);
+				scene.add(sprite);
 			}
 			
 			function onDocumentMouseMove( event ) {
