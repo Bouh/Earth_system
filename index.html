@@ -41,36 +41,43 @@
 
 		/*
 		
-			pour le cloud mettre un mesh en forme de T avec le pied sur la terre.
 			DatGui pour l'ajout des points sur la terre et suppression modification
 			indexeddb ou cookie pour sauvegarde
 		
 		*/
-			var container = document.getElementsByTagName("canvas");
+			
 			var camera, scene, renderer;
 			var stats = new Stats();
 			
 			var vector = new THREE.Vector3();
-			var mouse = { x: 1, y: 1 };
+			var mouse = { x: 1, y: 1 }; //Position projector
 			var projector = new THREE.Projector();
 			var	raycaster = new THREE.Raycaster();
 			var intersects;
-			var objectsClick = [];
+			var objectsClick = []; //Tout les objects "cliquable"
 			
+			var Earth_glow_color = "#1E7DCC";
 			var Earth_segment = Earth_radius = 25;
 			var Cloud_radius = 0.5;
 			var Cloud_segment = 8;
 			
-
-
+			
+			var time = 0, //Itération de render
+				rand = Math.random()*0.1
+			;
+			
+			
 			init();
 			animate();
 
+			
 			function init() {
 
+				//Création de la div pour le canvas et les stats
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
-
+				
+				
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
 				
 				camera.name = "camera";
@@ -78,13 +85,16 @@
 				camera.position.y = 30;
 				camera.position.z = -80;
 
+				//Gestion de la caméra
 				Orbitcontrols = new THREE.OrbitControls( camera );
 				
 				scene = new THREE.Scene();
 				
+				//Glow pour la terre
 				glow();
 				
-				// light
+				
+				// Light Australie
 				var light = new THREE.PointLight( "white", 1, 100 );
 				light.position.set( -26, -13, -20 );
 				scene.add( light );
@@ -94,16 +104,18 @@
 				directionalLight.position.set( 1, 1, 0);
 				scene.add( directionalLight );
 
-				//helper
-				var axisHelper = new THREE.AxisHelper( 15 );
+				//Aide axes XYZ Y-up
+				var axisHelper = new THREE.AxisHelper( 50 );
 				scene.add( axisHelper );
 				
+				//Aide light Australie
 				var pointLightHelper = new THREE.PointLightHelper( light, 1 );
 				scene.add( pointLightHelper );
 
-
-				geo = new THREE.SphereGeometry(Earth_radius, Earth_segment, Earth_segment);
+				//Modélisation de la Terre
+				Earth_geo = new THREE.SphereGeometry(Earth_radius, Earth_segment, Earth_segment);
 				
+				//Matière de la Terre
 				var Earth_material	= new THREE.MeshPhongMaterial({
 					map		: THREE.ImageUtils.loadTexture("img/earthmap1k.jpg"),
 					bumpMap		: THREE.ImageUtils.loadTexture("img/earthbump1k.jpg"),
@@ -113,19 +125,15 @@
 					shininess	: 5,
 				})
 	
-				earth = new THREE.Mesh( geo, Earth_material );
-				
+				earth = new THREE.Mesh( Earth_geo, Earth_material );
 				earth.name = "earth";
-				//object.rotation.x = -90* Math.PI / 180;
-				
 				scene.add(earth);
 				objectsClick.push(earth);
 				
 				//Render
 				
-				renderer = new THREE.WebGLRenderer({antialias: true, alpha: true });
+				renderer = new THREE.WebGLRenderer({antialias: true, alpha: true });	//Alpha pour le glow qui est un sprite en png
 				renderer.setSize( window.innerWidth, window.innerHeight );
-				
 				container.appendChild( renderer.domElement );
 
 				//Stats
@@ -139,18 +147,24 @@
 				window.addEventListener( 'resize', onWindowResize, false );
 			}
 			
-			function add_cloud(arg_position){
-				geo = new THREE.SphereGeometry(Cloud_radius, Cloud_segment, Cloud_segment);
+			function add_cloud(arg_position, arg_intersects){
+			
+				Cloud_geo = new THREE.SphereGeometry(Cloud_radius, Cloud_segment, Cloud_segment);
 				
 				Cloud_mat = new THREE.MeshLambertMaterial({
-					color: "white",
-					wireframe: false
+					color: "#73FFDC",
+					wireframe: true
 				});
-				cloud = new THREE.Mesh( geo, Cloud_mat );
+				cloud = new THREE.Mesh( Cloud_geo, Cloud_mat );
 				
 				cloud.name = "Cloud";
-				//object.rotation.x = -90* Math.PI / 180;
 				cloud.position.set(arg_position.x, arg_position.y, arg_position.z);
+				console.log(mouse);
+				
+				cloud.lookAt(new THREE.Vector3(0,0,0));
+				//A VOIR SI UTILE
+				//cloud.worldToLocal(new THREE.Vector3(0,0,0));
+				cloud.translateZ(-5);	//Décalage Terre/nuage
 				
 				scene.add(cloud);
 			}
@@ -170,39 +184,38 @@
 				if(intersects[0]){
 					
 					var position = intersects[0].point;
-
-					add_cloud(position);
+					add_cloud(position, intersects);
 				
 				}
 				
-				var length = 25;
-				var color = "black";
+				//Aide flèche face normal
+				var longueur = 50;
+				var color = "#000000";
 
-				//var arrowHelper = new THREE.ArrowHelper( direction, origin, length, color );
-				//scene.add( arrowHelper );
-				/*
-				*/
+				var arrowHelper = new THREE.ArrowHelper( intersects[0].face.normal, new THREE.Vector3(0,0,0), longueur, color );
+				scene.add( arrowHelper );
 				
 			}
 			
 			function glow(){
+			
 				var spriteMaterial = new THREE.SpriteMaterial({ 
 					map: new THREE.ImageUtils.loadTexture("img/glow.png"), 
 					useScreenCoordinates: false,
 					//alignment: THREE.SpriteAlignment.center,
-					color: 0x0000ff,
+					color: Earth_glow_color,
 					transparent: false,
 					blending: THREE.AdditiveBlending
 				});
+				
 				var sprite = new THREE.Sprite( spriteMaterial );
-				sprite.scale.set(100, 100, 1.0);
+				sprite.scale.set(80, 80, 1.0);
 				scene.add(sprite);
 			}
 			
 			function onDocumentMouseMove( event ) {
 
 				event.preventDefault();
-
 				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 
@@ -216,6 +229,21 @@
 			}
 			
 			function animate() {
+			
+				//Pour chaque nuage mesh dans la scene
+				for(var key in data = scene.children){
+			
+					//Pour les nuages
+					if(data[key].name == "Cloud"){
+					
+						speed = rand;
+						exp = ((Math.sin(time*speed))/2*speed);
+						
+						//Tranlation du nuage sur son axe Z
+						data[key].translateZ(exp);
+				    }
+				}
+			
 				Orbitcontrols.update();
 				stats.update();
 				requestAnimationFrame( animate );
@@ -224,9 +252,10 @@
 
 			function render() {
 			
+				time++;
 				vector.set( mouse.x, mouse.y, 0.1 );
 				projector.unprojectVector( vector, camera );
-				renderer.setClearColor( 0x000000, 0 );//couleur de fond du canvas
+				renderer.setClearColor( 0x000000, 0 );//couleur de fond du canvas et alpha
 				renderer.render( scene, camera );
 			}
 
