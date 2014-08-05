@@ -2,6 +2,7 @@
 		<script src="./lib/three67.min.js"></script>
 		<script src="./lib/OrbitControls.js"></script>
 		<script src="./lib/stats.min.js"></script>		
+		<script src="./lib/DatGUI.js"></script>		
 		
 		<title>Earth Clickkkk</title>
 		
@@ -17,34 +18,74 @@
 				margin: 0px;
 				overflow: hidden;
 			}
-			#info {
-				color: black;
-				position: absolute;
-				top: 10px;
-				width: 100%;
-				text-align: center;
-				z-index: 100;1
-				display:block;
-			}
-			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
 		</style>
 	</head>
 
 	<body>
-		<div id="info">
-			<a href="http://threejs.org" target="_blank">three.js</a> - Earth Clickkkk - <a href="http://www.witly.fr/portfolio" target="_blank">Aurélien Vivet</a>
-		</div>
 
 		<img src="img/glow.png" style="display:none;">
 
 		<script>
 
 		/*
-		
-			DatGui pour l'ajout des points sur la terre et suppression modification
-			indexeddb ou cookie pour sauvegarde
+			Savoir sur quoi je clique
+			Pour pouvoir mettre des liens entre les nuages
+			Et avoir des infos selon le nuage :
+				Div par dessus le canvas.
+			
+			Enregistrement :
+				indexeddb, cookie, localstorage
 		
 		*/
+			
+			var gui = new dat.GUI({
+				//height : 5 * 32 - 1
+			});
+			
+			var params = {
+			
+				Save_all : function(){
+					//TODO
+					//indexeddb, cookie, localstorage
+					
+				},
+				Cloud_add : function() {
+					
+					window.addEventListener( 'mouseup', click_on_sphere, false );
+					document.body.style.cursor = "crosshair";
+					console.log("Add cloud");
+				},
+				Cloud_delete : function() {
+				
+					//Pour tout les nuages
+					while(scene.getObjectByName("Cloud")){
+					
+						scene.remove(scene.getObjectByName("Cloud"));
+						console.log("Delete cloud");
+					}
+				},
+				link_1 : function(){
+					window.location = "http://witly.fr/portfolio/";
+				},
+				link_2 : function(){
+					window.location = "http://threejs.org/";
+				},
+				link_3 : function(){
+					window.location = "https://code.google.com/p/dat-gui/";
+				}
+			};
+			
+			var f1 = gui.addFolder("Gestion des nuages");
+			f1.add(params, 'Cloud_add').name("Ajouter un nuage");
+			f1.add(params, 'Cloud_delete').name("Tout supprimer");
+			f1.add(params, 'Save_all').name("WIP Enregistrer");
+			f1.open();
+			
+			var f2 = gui.addFolder("Crédits");
+			f2.add(params, 'link_1').name("Auteur : Aurélien Vivet");
+			f2.add(params, 'link_2').name("Lien : Threejs");
+			//f2.add(params, 'link_3').name("Lien : dat.GUI").color("#f0f");
+			
 			
 			var camera, scene, renderer;
 			var stats = new Stats();
@@ -58,13 +99,14 @@
 			
 			var Earth_glow_color = "#1E7DCC";
 			var Earth_segment = Earth_radius = 25;
+			
+			var Cloud_glow_color = "#259CFF";
 			var Cloud_radius = 0.5;
 			var Cloud_segment = 8;
 			
 			
-			var time = 0, //Itération de render
-				rand = Math.random()*0.1
-			;
+			var time = 0; //Itération de render
+			var rand = Math.random()*0.1;
 			
 			
 			init();
@@ -93,23 +135,26 @@
 				//Glow pour la terre
 				glow();
 				
-				
 				// Light Australie
 				var light = new THREE.PointLight( "white", 1, 100 );
 				light.position.set( -26, -13, -20 );
+				light.name = "PointLight";
 				scene.add( light );
 
 				//SUN
 				var directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
 				directionalLight.position.set( 1, 1, 0);
+				directionalLight.name = "Sun";
 				scene.add( directionalLight );
 
 				//Aide axes XYZ Y-up
 				var axisHelper = new THREE.AxisHelper( 50 );
+				axisHelper.name = "AxisHelper";
 				scene.add( axisHelper );
 				
 				//Aide light Australie
 				var pointLightHelper = new THREE.PointLightHelper( light, 1 );
+				pointLightHelper.nme = "PointLightHelper";
 				scene.add( pointLightHelper );
 
 				//Modélisation de la Terre
@@ -125,7 +170,7 @@
 					shininess	: 5,
 				})
 	
-				earth = new THREE.Mesh( Earth_geo, Earth_material );
+				var earth = new THREE.Mesh( Earth_geo, Earth_material );
 				earth.name = "earth";
 				scene.add(earth);
 				objectsClick.push(earth);
@@ -143,19 +188,22 @@
 				container.appendChild( stats.domElement );
 
 				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-				window.addEventListener( 'mouseup', click_on_sphere, false );
+				
 				window.addEventListener( 'resize', onWindowResize, false );
 			}
 			
 			function add_cloud(arg_position, arg_intersects){
-			
-				Cloud_geo = new THREE.SphereGeometry(Cloud_radius, Cloud_segment, Cloud_segment);
 				
-				Cloud_mat = new THREE.MeshLambertMaterial({
-					color: "#73FFDC",
-					wireframe: true
+				var Cloud_Material = new THREE.SpriteMaterial({ 
+					map: new THREE.ImageUtils.loadTexture("img/glow.png"), 
+					useScreenCoordinates: false,
+					//alignment: THREE.SpriteAlignment.center,
+					color: Cloud_glow_color,
+					transparent: false,
+					blending: THREE.AdditiveBlending
 				});
-				cloud = new THREE.Mesh( Cloud_geo, Cloud_mat );
+				
+				var cloud = new THREE.Sprite( Cloud_Material );
 				
 				cloud.name = "Cloud";
 				cloud.position.set(arg_position.x, arg_position.y, arg_position.z);
@@ -167,9 +215,12 @@
 				cloud.translateZ(-5);	//Décalage Terre/nuage
 				
 				scene.add(cloud);
+				window.removeEventListener( 'mouseup', click_on_sphere, false );
+				document.body.style.cursor = "";
 			}
 			
 			function click_on_sphere(){
+				
 				
 				vector.set( mouse.x, mouse.y, 0.1 );
 				projector.unprojectVector( vector, camera );
@@ -189,11 +240,13 @@
 				}
 				
 				//Aide flèche face normal
+				/*
 				var longueur = 50;
 				var color = "#000000";
 
 				var arrowHelper = new THREE.ArrowHelper( intersects[0].face.normal, new THREE.Vector3(0,0,0), longueur, color );
 				scene.add( arrowHelper );
+				*/
 				
 			}
 			
@@ -209,6 +262,7 @@
 				});
 				
 				var sprite = new THREE.Sprite( spriteMaterial );
+				sprite.name = "Earth_glow";
 				sprite.scale.set(80, 80, 1.0);
 				scene.add(sprite);
 			}
