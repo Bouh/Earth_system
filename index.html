@@ -38,9 +38,7 @@
 		
 		*/
 			
-			var gui = new dat.GUI({
-				//height : 5 * 32 - 1
-			});
+			var gui = new dat.GUI();
 			
 			var params = {
 			
@@ -209,30 +207,30 @@
 					
 					var arg_position = Click().point;
 				
-				var Cloud_Material = new THREE.SpriteMaterial({ 
-					map: new THREE.ImageUtils.loadTexture("img/glow.png"), 
-					useScreenCoordinates: false,
-					color: Cloud_glow_color,
-					transparent: false,
-					blending: THREE.AdditiveBlending
-				});
-				
-				var cloud = new THREE.Sprite( Cloud_Material );
-				
-				cloud.name = "Cloud";
-				cloud.position.set(arg_position.x, arg_position.y, arg_position.z);
-				console.log(mouse);
-				
-				cloud.lookAt(new THREE.Vector3(0,0,0));
-				//A VOIR SI UTILE
-				//cloud.worldToLocal(new THREE.Vector3(0,0,0));
-				cloud.translateZ(-5);	//Décalage Terre/nuage
-				
-				scene.add(cloud);
-				objectsClick.push(cloud);
-				
-				window.removeEventListener( 'mouseup', Add_cloud, false );
-				document.body.style.cursor = "";
+					var Cloud_Material = new THREE.SpriteMaterial({ 
+						map: new THREE.ImageUtils.loadTexture("img/glow.png"), 
+						useScreenCoordinates: false,
+						color: Cloud_glow_color,
+						transparent: false,
+						blending: THREE.AdditiveBlending
+					});
+					
+					var cloud = new THREE.Sprite( Cloud_Material );
+					
+					cloud.name = "Cloud";
+					cloud.position.set(arg_position.x, arg_position.y, arg_position.z);
+					console.log(mouse);
+					
+					cloud.lookAt(new THREE.Vector3(0,0,0));
+					//A VOIR SI UTILE
+					//cloud.worldToLocal(new THREE.Vector3(0,0,0));
+					cloud.translateZ(-5);	//Décalage Terre/nuage
+					
+					scene.add(cloud);
+					objectsClick.push(cloud);
+					
+					window.removeEventListener( 'mouseup', Add_cloud, false );
+					document.body.style.cursor = "";
 				}
 			}
 			
@@ -254,10 +252,6 @@
 					History_click.push(intersects[0]);
 					text.push( History_click[History_click.length-1].object.name);
 					
-					//console.log("Click : " + intersects[0].object.name);
-					//console.log("Last Click : " + History_click[History_click.length-1].object.name);
-					//console.log( History_click);
-					//console.log(text);
 					if(dev.__controllers.length > 0){
 						dev.__controllers[dev.__controllers.length-1].remove();
 					}
@@ -300,47 +294,42 @@
 				var material = new THREE.LineBasicMaterial({color:"green", opacity:1});
 				
 				
-                                       //aX, aY, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise 
-				//var ellipse = new THREE.EllipseCurve(0, 0, 1, 4, 0, 1.0 * Math.PI, false);
-	
-				//var ellipse = new THREE.ArcCurve( 0, 0, 30, 0, 1.0*Math.PI, true );
+				//var curvePoints = new THREE.EllipseCurve(0, 0, 1, 4, 0, 1.0 * Math.PI, false);
+				//var curvePoints = new THREE.ArcCurve( 0, 0, 30, 0, 1.0*Math.PI, true );
 				
 				/*
-				var ellipse = new THREE.SplineCurve3([
+				var curvePoints = new THREE.SplineCurve3([
 					new THREE.Vector3(50,0,0),
 					//new THREE.Vector3(0,50,0),
 					new THREE.Vector3(-50,0,0)
 				]);
 				*/
-				
-				/*
-				*/
-				var ellipse = new THREE.QuadraticBezierCurve3(
+				var curvePoints = new THREE.QuadraticBezierCurve3(
 					new THREE.Vector3(50,0,0),
-					new THREE.Vector3(0,50,0),
+					new THREE.Vector3(0,55,0),
 					new THREE.Vector3(-50,0,0),
 					0);
 				
 				/*
-				var ellipse = new THREE.CubicBezierCurve3(
+				var curvePoints = new THREE.CubicBezierCurve3(
 					new THREE.Vector3(50,0,0),
 					new THREE.Vector3(25,50,0),
 					new THREE.Vector3(0,50,0),
 					new THREE.Vector3(-50,0,0),
 					0);
 				
-				var ellipse = new THREE.LineCurve3(
+				var curvePoints = new THREE.LineCurve3(
 					new THREE.Vector3(50,0,0),
 					new THREE.Vector3(-50,0,0),
 					0);
 				*/
-
 	
-				ellipsePath = new THREE.CurvePath();
-				ellipsePath.add(ellipse);
-				var ellipseGeometry = ellipsePath.createPointsGeometry(100);
-				ellipseGeometry.computeTangents();
-				var line = new THREE.Line(ellipseGeometry, material);
+				curvePath = new THREE.CurvePath();
+				curvePath.add(curvePoints);
+				var curveGeometry = curvePath.createPointsGeometry(100);
+				curveGeometry.computeTangents();
+				var line = new THREE.Line(curveGeometry, material);
+				line.name = "Link";
 				scene.add(line);
 			}
 			
