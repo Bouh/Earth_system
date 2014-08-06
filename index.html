@@ -49,9 +49,13 @@
 					//indexeddb, cookie, localstorage
 					
 				},
+				Link_add : function(){
+					Add_Curve();
+					
+				},
 				Cloud_add : function() {
 					
-					window.addEventListener( 'mouseup', click_on_sphere, false );
+					window.addEventListener( 'mouseup', Add_cloud, false );
 					document.body.style.cursor = "crosshair";
 					console.log("Add cloud");
 				},
@@ -72,11 +76,15 @@
 				},
 				link_3 : function(){
 					window.location = "https://code.google.com/p/dat-gui/";
+				},
+				empty : function(){
+					//Vide
 				}
 			};
 			
 			var f1 = gui.addFolder("Gestion des nuages");
 			f1.add(params, 'Cloud_add').name("Ajouter un nuage");
+			f1.add(params, 'Link_add').name("Ajouter un lien");
 			f1.add(params, 'Cloud_delete').name("Tout supprimer");
 			f1.add(params, 'Save_all').name("WIP Enregistrer");
 			f1.open();
@@ -84,8 +92,10 @@
 			var f2 = gui.addFolder("Crédits");
 			f2.add(params, 'link_1').name("Auteur : Aurélien Vivet");
 			f2.add(params, 'link_2').name("Lien : Threejs");
-			//f2.add(params, 'link_3').name("Lien : dat.GUI").color("#f0f");
+			f2.add(params, 'link_3').name("Lien : Dat.GUI");
 			
+			var dev = gui.addFolder("DEV");
+			dev.open();
 			
 			var camera, scene, renderer;
 			var stats = new Stats();
@@ -96,6 +106,7 @@
 			var	raycaster = new THREE.Raycaster();
 			var intersects;
 			var objectsClick = []; //Tout les objects "cliquable"
+			var History_click = new Array(); //Les derniers objects cliqué.
 			
 			var Earth_glow_color = "#1E7DCC";
 			var Earth_segment = Earth_radius = 25;
@@ -108,6 +119,7 @@
 			var time = 0; //Itération de render
 			var rand = Math.random()*0.1;
 			
+			var text = new Array();
 			
 			init();
 			animate();
@@ -121,8 +133,7 @@
 				
 				
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				
-				camera.name = "camera";
+				camera.name = "Camera";
 				camera.position.x = 0;
 				camera.position.y = 30;
 				camera.position.z = -80;
@@ -133,7 +144,7 @@
 				scene = new THREE.Scene();
 				
 				//Glow pour la terre
-				glow();
+				Glow();
 				
 				// Light Australie
 				var light = new THREE.PointLight( "white", 1, 100 );
@@ -154,11 +165,11 @@
 				
 				//Aide light Australie
 				var pointLightHelper = new THREE.PointLightHelper( light, 1 );
-				pointLightHelper.nme = "PointLightHelper";
+				pointLightHelper.name = "PointLightHelper";
 				scene.add( pointLightHelper );
 
 				//Modélisation de la Terre
-				Earth_geo = new THREE.SphereGeometry(Earth_radius, Earth_segment, Earth_segment);
+				var Earth_geo = new THREE.SphereGeometry(Earth_radius, Earth_segment, Earth_segment);
 				
 				//Matière de la Terre
 				var Earth_material	= new THREE.MeshPhongMaterial({
@@ -171,7 +182,7 @@
 				})
 	
 				var earth = new THREE.Mesh( Earth_geo, Earth_material );
-				earth.name = "earth";
+				earth.name = "Earth";
 				scene.add(earth);
 				objectsClick.push(earth);
 				
@@ -188,16 +199,19 @@
 				container.appendChild( stats.domElement );
 
 				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-				
+				window.addEventListener( 'mousedown', Click, false );
 				window.addEventListener( 'resize', onWindowResize, false );
 			}
 			
-			function add_cloud(arg_position, arg_intersects){
+			function Add_cloud(){
+				
+				if(Click()){
+					
+					var arg_position = Click().point;
 				
 				var Cloud_Material = new THREE.SpriteMaterial({ 
 					map: new THREE.ImageUtils.loadTexture("img/glow.png"), 
 					useScreenCoordinates: false,
-					//alignment: THREE.SpriteAlignment.center,
 					color: Cloud_glow_color,
 					transparent: false,
 					blending: THREE.AdditiveBlending
@@ -215,12 +229,14 @@
 				cloud.translateZ(-5);	//Décalage Terre/nuage
 				
 				scene.add(cloud);
-				window.removeEventListener( 'mouseup', click_on_sphere, false );
+				objectsClick.push(cloud);
+				
+				window.removeEventListener( 'mouseup', Add_cloud, false );
 				document.body.style.cursor = "";
+				}
 			}
 			
-			function click_on_sphere(){
-				
+			function Click(){
 				
 				vector.set( mouse.x, mouse.y, 0.1 );
 				projector.unprojectVector( vector, camera );
@@ -235,22 +251,100 @@
 				if(intersects[0]){
 					
 					var position = intersects[0].point;
-					add_cloud(position, intersects);
-				
+					History_click.push(intersects[0]);
+					text.push( History_click[History_click.length-1].object.name);
+					
+					//console.log("Click : " + intersects[0].object.name);
+					//console.log("Last Click : " + History_click[History_click.length-1].object.name);
+					//console.log( History_click);
+					//console.log(text);
+					if(dev.__controllers.length > 0){
+						dev.__controllers[dev.__controllers.length-1].remove();
+					}
+					dev.add(params, 'empty').name("Dernier clique : " + Last_click().object.name);
+					
+					return intersects[0];
 				}
-				
-				//Aide flèche face normal
-				/*
-				var longueur = 50;
-				var color = "#000000";
-
-				var arrowHelper = new THREE.ArrowHelper( intersects[0].face.normal, new THREE.Vector3(0,0,0), longueur, color );
-				scene.add( arrowHelper );
-				*/
 				
 			}
 			
-			function glow(){
+			function Last_click(){
+				return History_click[History_click.length-1];
+			}
+			
+			function Add_Curve(Start_position, End_position){
+				/*
+				var arc = new THREE.SplineCurve3([
+					new THREE.Vector3(0, 0, 0),
+					new THREE.Vector3(0, -50, 0)
+				]);
+				*/
+				/*
+				arc = new THREE.ArcCurve (-50, 50, 10, 0, 1.57, false)
+				                          // aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise
+				tube = new THREE.TubeGeometry(arc, 10, 20, 30, true);
+
+				tubeMesh = THREE.SceneUtils.createMultiMaterialObject( tube, [
+						new THREE.MeshLambertMaterial({
+							color: "red"
+						}),
+						new THREE.MeshBasicMaterial({
+							color: "green",
+							opacity: 1,
+							wireframe: true,
+							transparent: false
+						})
+					]
+				);
+				*/
+				var material = new THREE.LineBasicMaterial({color:"green", opacity:1});
+				
+				
+                                       //aX, aY, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise 
+				//var ellipse = new THREE.EllipseCurve(0, 0, 1, 4, 0, 1.0 * Math.PI, false);
+	
+				//var ellipse = new THREE.ArcCurve( 0, 0, 30, 0, 1.0*Math.PI, true );
+				
+				/*
+				var ellipse = new THREE.SplineCurve3([
+					new THREE.Vector3(50,0,0),
+					//new THREE.Vector3(0,50,0),
+					new THREE.Vector3(-50,0,0)
+				]);
+				*/
+				
+				/*
+				*/
+				var ellipse = new THREE.QuadraticBezierCurve3(
+					new THREE.Vector3(50,0,0),
+					new THREE.Vector3(0,50,0),
+					new THREE.Vector3(-50,0,0),
+					0);
+				
+				/*
+				var ellipse = new THREE.CubicBezierCurve3(
+					new THREE.Vector3(50,0,0),
+					new THREE.Vector3(25,50,0),
+					new THREE.Vector3(0,50,0),
+					new THREE.Vector3(-50,0,0),
+					0);
+				
+				var ellipse = new THREE.LineCurve3(
+					new THREE.Vector3(50,0,0),
+					new THREE.Vector3(-50,0,0),
+					0);
+				*/
+
+	
+				ellipsePath = new THREE.CurvePath();
+				ellipsePath.add(ellipse);
+				var ellipseGeometry = ellipsePath.createPointsGeometry(100);
+				ellipseGeometry.computeTangents();
+				var line = new THREE.Line(ellipseGeometry, material);
+				scene.add(line);
+			}
+			
+			function Glow(){
 			
 				var spriteMaterial = new THREE.SpriteMaterial({ 
 					map: new THREE.ImageUtils.loadTexture("img/glow.png"), 
