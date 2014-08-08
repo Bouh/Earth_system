@@ -28,6 +28,7 @@
 		<script>
 
 		/*
+			Voir LookAt de Object3D pour faire un LookAt manuel avec un up différent de Z
 			Savoir sur quoi je clique
 			Pour pouvoir mettre des liens entre les nuages
 			Et avoir des infos selon le nuage :
@@ -48,7 +49,9 @@
 					
 				},
 				Link_add : function(){
-					Add_Curve();
+					var p1 = History_click[History_click.length-2].object.position;
+					var p2 = History_click[History_click.length-1].object.position;
+					Add_Curve(p1, p2);
 					
 				},
 				Cloud_add : function() {
@@ -105,17 +108,18 @@
 			var intersects;
 			var objectsClick = []; //Tout les objects "cliquable"
 			var History_click = new Array(); //Les derniers objects cliqué.
-			
+			var Count_click = 0;
 			var Earth_glow_color = "#1E7DCC";
 			var Earth_segment = Earth_radius = 25;
 			
+			var Arc_color = "#259CFF";
 			var Cloud_glow_color = "#259CFF";
 			var Cloud_radius = 0.5;
 			var Cloud_segment = 8;
 			
 			
 			var time = 0; //Itération de render
-			var rand = Math.random()*0.1;
+			var rand = 0.05; //Math.random()*0.1 (Attention si random il y aura un décallage entre l'arc et les nuages)
 			
 			var text = new Array();
 			
@@ -267,70 +271,64 @@
 			}
 			
 			function Add_Curve(Start_position, End_position){
-				/*
-				var arc = new THREE.SplineCurve3([
-					new THREE.Vector3(0, 0, 0),
-					new THREE.Vector3(0, -50, 0)
-				]);
-				*/
-				/*
-				arc = new THREE.ArcCurve (-50, 50, 10, 0, 1.57, false)
-				                          // aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise
-				tube = new THREE.TubeGeometry(arc, 10, 20, 30, true);
-
-				tubeMesh = THREE.SceneUtils.createMultiMaterialObject( tube, [
-						new THREE.MeshLambertMaterial({
-							color: "red"
-						}),
-						new THREE.MeshBasicMaterial({
-							color: "green",
-							opacity: 1,
-							wireframe: true,
-							transparent: false
-						})
-					]
-				);
-				*/
-				var material = new THREE.LineBasicMaterial({color:"green", opacity:1});
-				
-				
-				//var curvePoints = new THREE.EllipseCurve(0, 0, 1, 4, 0, 1.0 * Math.PI, false);
-				//var curvePoints = new THREE.ArcCurve( 0, 0, 30, 0, 1.0*Math.PI, true );
-				
-				/*
-				var curvePoints = new THREE.SplineCurve3([
-					new THREE.Vector3(50,0,0),
-					//new THREE.Vector3(0,50,0),
-					new THREE.Vector3(-50,0,0)
-				]);
-				*/
-				var curvePoints = new THREE.QuadraticBezierCurve3(
-					new THREE.Vector3(50,0,0),
-					new THREE.Vector3(0,55,0),
-					new THREE.Vector3(-50,0,0),
-					0);
-				
-				/*
-				var curvePoints = new THREE.CubicBezierCurve3(
-					new THREE.Vector3(50,0,0),
-					new THREE.Vector3(25,50,0),
-					new THREE.Vector3(0,50,0),
-					new THREE.Vector3(-50,0,0),
-					0);
-				
-				var curvePoints = new THREE.LineCurve3(
-					new THREE.Vector3(50,0,0),
-					new THREE.Vector3(-50,0,0),
-					0);
-				*/
 	
+				console.log("ok");
+					var Second_click = History_click[History_click.length-1].object;
+					var First_click = History_click[History_click.length-2].object;
+					
+					var point_Second = Second_click.position;
+					var point_First = First_click.position;
+
+					var distance = point_Second.distanceTo( point_First );
+					var centre = distance/2;
+					console.log(distance);
+
+
+				var centre = new THREE.Vector3();
+				centre.addVectors( Start_position, End_position ).multiplyScalar( 0.5 );
+				
+				/*
+				var material = new THREE.LineBasicMaterial({
+					color: Arc_color,
+					opacity:1
+				});
+				
+				var material = new THREE.LineDashedMaterial({
+					color: 0xffffff,
+					dashSize: 1,
+					gapSize: 0.5 
+				});
+				*/
+				
+				var material = new THREE.LineDashedMaterial({
+					color: 0xffaa00,
+					dashSize: 3,
+					gapSize: 1,
+					linewidth: 2
+				});
+				
+
+				//new THREE.ArcCurve(aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise);
+				var curvePoints = new THREE.ArcCurve( 0,0, distance/2, 0, 1.0*Math.PI, false );
 				curvePath = new THREE.CurvePath();
 				curvePath.add(curvePoints);
 				var curveGeometry = curvePath.createPointsGeometry(100);
 				curveGeometry.computeTangents();
-				var line = new THREE.Line(curveGeometry, material);
-				line.name = "Link";
-				scene.add(line);
+				var arc = new THREE.Line(curveGeometry, material, THREE.LinePieces);
+				arc.name = "Arc";
+				
+				arc.position.set(centre.x, centre.y, centre.z);
+				
+				var axe = new THREE.AxisHelper( 50 );
+				axe.name = "Arc_Helper";
+				scene.add( axe );
+				
+				axe.position.copy(arc.position);
+				axe.lookAt(point_Second);
+				arc.rotation.copy(axe.rotation);
+				//scene.remove(axe);
+				arc.rotateY(Math.PI/2);
+				scene.add(arc);
 			}
 			
 			function Glow(){
@@ -379,6 +377,18 @@
 						//Tranlation du nuage sur son axe Z
 						data[key].translateZ(exp);
 				    }
+					
+					//Pour les liens
+					/*
+					if(data[key].name == "Arc"){
+					
+						speed = rand;
+						exp = ((Math.sin(time*speed))/2*speed);
+						
+						//Tranlation du nuage sur son axe Z
+						data[key].translateZ(exp);
+				    }
+					*/
 				}
 			
 				Orbitcontrols.update();
