@@ -1,4 +1,15 @@
-			var camera, scene, renderer;
+/*
+	Une texture en threejs n'est jamais en SVG
+	
+	Si je prend les pts de 	https://github.com/wrobstory/vincent_map_data
+	et que une fois converti en 3D je trace des lignes entre chaque points pour refaire un mesh par pays soit 177
+	les lignes passerons dans la terre et ne suiveront pas la courbure de la terre
+	
+	
+	pour re avoir le rendu de base je doit viré la scene_glow et les render sauf renderer.render()
+*/
+
+			var camera, scene, renderer, gui;
 			var stats = new Stats();
 
 			var vector = new THREE.Vector3();
@@ -10,23 +21,24 @@
 			var objectsClick = []; //Tout les objects "cliquable"
 			var History_click = []; //Les derniers objects cliqué.
 			var Earth_glow_color = "#1E7DCC";
-			var Earth_segment = 25;
-			var Earth_radius = 25;
-
+			var Earth_segment = 50;
+			var Earth_radius = 50;
+			var distance_Terre_Cloud = 2;
 			var Arc_color = "#259CFF";
 			var Cloud_glow_color = "#259CFF";
 
+			var blackMaterial = new THREE.MeshBasicMaterial( {color: 0x000000} ); 
 			/*
 				No USE
 			var Cloud_radius = 0.5;
 			var Cloud_segment = 8;
 			*/
 
-			var numero = 0; //Identification
-			var time = 0; //Itération de render
+			var numero = 0; //Identification des nuages et liens
+			var time = 0; //Itération de render        TODO possibilitée de faire autrement : en utilisant une méthode de renderer ?
 			var rand = 0.05; //Math.random()*0.1 (Attention si random il y aura un décallage entre l'arc et les nuages)
 
-			var text = [];
+			var text = [];//A VERIF
 
 			//Paramètres de dat.GUI
 			var params = {
@@ -71,10 +83,60 @@
 				}
 			};
 
+			function latLongToVector3( lat, lon, radius, offset_height) {
+				var phi = (lat)*Math.PI/180;
+				var theta = (lon-180)*Math.PI/180;
+				var x = -(radius+offset_height) * Math.cos(phi) * Math.cos(theta);
+				var y = (radius+offset_height) * Math.sin(phi);
+				var z = (radius+offset_height) * Math.cos(phi) * Math.sin(theta);   
+				return new THREE.Vector3(x,y,z);
+			}
+			
+			function Glow() {
 
+			
+				/*
+					Voir si un shader serais mieux ou non
+				*/
+				
+				var spriteMaterial = new THREE.SpriteMaterial({
+					map: new THREE.ImageUtils.loadTexture("img/glow.png"),
+					useScreenCoordinates: false,
+					//alignment: THREE.SpriteAlignment.center,
+					color: Earth_glow_color,
+					transparent: false,
+					blending: THREE.AdditiveBlending
+				});
+
+				var sprite = new THREE.Sprite(spriteMaterial);
+				sprite.name = "Earth_glow";
+				sprite.scale.set(4*Earth_radius, 4*Earth_radius, 1.0);
+				scene.add(sprite);
+				
+				//glsl
+				/*
+				var customMaterial = new THREE.ShaderMaterial({
+					uniforms: {},
+					vertexShader:   document.getElementById( 'vertexShader'   ).textContent,
+					fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+					side: THREE.BackSide,
+					blending: THREE.AdditiveBlending,
+					transparent: true
+				});
+				
+				var Earth_glow_geo = new THREE.SphereGeometry(Earth_radius+20, Earth_segment, Earth_segment);
+				var Earth_glow = new THREE.Mesh(Earth_glow_geo, customMaterial);
+				scene.add(Earth_glow);
+				
+				*/
+			}
+			
+			
 			function init() {
 
-				var gui = new dat.GUI();
+				gui = new dat.GUI();
+				scene = new THREE.Scene();
+				scene_glow = new THREE.Scene();
 
 				f1 = gui.addFolder("Gestion des nuages");
 				f1.add(params, 'Cloud_add').name("Ajouter un nuage");
@@ -99,14 +161,17 @@
 
 				camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
 				camera.name = "Camera";
-				camera.position.x = 0;
-				camera.position.y = 30;
-				camera.position.z = -80;
+				camera.position.x = 160;
+				camera.position.y = 0;
+				camera.position.z = 0;
 
+				scene.add(camera);
+				camera2 = camera;
+				scene_glow.add(camera2);
+				
 				//Gestion de la caméra
 				Orbitcontrols = new THREE.OrbitControls(camera);
 
-				scene = new THREE.Scene();
 
 				//Glow pour la terre
 				Glow();
@@ -124,9 +189,10 @@
 				scene.add(directionalLight);
 
 				//Aide axes XYZ Y-up
-				var axisHelper = new THREE.AxisHelper(50);
+				var axisHelper = new THREE.AxisHelper(100);
 				axisHelper.name = "AxisHelper";
 				scene.add(axisHelper);
+				
 
 				//Aide light Australie
 				var pointLightHelper = new THREE.PointLightHelper(light, 1);
@@ -135,7 +201,7 @@
 
 				//Modélisation de la Terre
 				var Earth_geo = new THREE.SphereGeometry(Earth_radius, Earth_segment, Earth_segment);
-
+				
 				//Matière de la Terre
 				var Earth_material = new THREE.MeshPhongMaterial({
 					map: THREE.ImageUtils.loadTexture("img/earthmap1k.jpg"),
@@ -149,17 +215,58 @@
 				var earth = new THREE.Mesh(Earth_geo, Earth_material);
 				earth.name = "Earth";
 				scene.add(earth);
+				var earth2 = new THREE.Mesh(Earth_geo, blackMaterial);
+				scene_glow.add(earth2);
 				objectsClick.push(earth);
 
-				//Render
-
+				//Render principal
 				renderer = new THREE.WebGLRenderer({
 					antialias: true,
 					alpha: true
-				}); //Alpha pour le glow qui est un sprite en png
+				}); //Alpha pour le glow qui est un sprite en png	Voir si peut etre remplacé par un shader ou non...
 				renderer.setSize(window.innerWidth, window.innerHeight);
 				container.appendChild(renderer.domElement);
 
+				//Render pour postprocessing
+				var renderTargetParameters = {
+					minFilter: THREE.LinearFilter,
+					magFilter: THREE.LinearFilter,
+					format: THREE.RGBFormat,
+					stencilBuffer: false
+				};
+				
+				var renderTarget = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, renderTargetParameters );
+				
+				//Reprise du rendu de base
+				rendu_basic = new THREE.EffectComposer( renderer, renderTarget );
+				
+				//Ajout de la scene contenant les objects sur lesquel faire le flou
+				var scene_to_blur = new THREE.RenderPass( scene_glow, camera2 );
+				rendu_basic.addPass( scene_to_blur );
+
+				//Les effets de  postprocessing à mettre sur le second rendu
+				//Ici ont y met du flou
+				var value_blur = 1 ;
+				var effectHorizBlur = new THREE.ShaderPass( THREE.HorizontalBlurShader );
+				var effectVertiBlur = new THREE.ShaderPass( THREE.VerticalBlurShader );
+				effectHorizBlur.uniforms[ "h" ].value = value_blur / window.innerWidth;
+				effectVertiBlur.uniforms[ "v" ].value = value_blur / window.innerHeight;
+				rendu_basic.addPass( effectHorizBlur );
+				rendu_basic.addPass( effectVertiBlur );
+				
+				//Prepare le rendu final
+				finalComposer = new THREE.EffectComposer( renderer, renderTarget );
+
+				//Prepare la pass final du rendu
+				var renderModel = new THREE.RenderPass( scene, camera );
+				finalComposer.addPass( renderModel );
+
+				
+				var effectBlend = new THREE.ShaderPass( THREE.AdditiveBlendShader, "tDiffuse1" );
+				effectBlend.uniforms[ 'tDiffuse2' ].value = rendu_basic.renderTarget2;
+				effectBlend.renderToScreen = true;
+				finalComposer.addPass( effectBlend );
+				
 				//Stats
 
 				stats.domElement.style.position = 'absolute';
@@ -169,7 +276,92 @@
 				document.addEventListener('mousemove', onDocumentMouseMove, false);
 				window.addEventListener('mousedown', Click, false);
 				window.addEventListener('resize', onWindowResize, false);
+				
+				//var pos_Paris = latLongToVector3(48.856614, 2.3522219000000177, Earth_radius,0);
+				var pos_Paris = latLongToVector3(50.12805176, 6.04305983, Earth_radius,0);
+			
+				var Cloud_Material = new THREE.SpriteMaterial({
+					map: new THREE.ImageUtils.loadTexture("img/glow.png"),
+					useScreenCoordinates: false,
+					color: Cloud_glow_color,
+					transparent: false,
+					blending: THREE.AdditiveBlending
+				});
+
+				var cloud = new THREE.Sprite(Cloud_Material);
+
+				cloud.name = "Cloud";
+				cloud.position.set(pos_Paris.x, pos_Paris.y, pos_Paris.z);
+				console.log(mouse);
+
+				cloud.lookAt(new THREE.Vector3(0, 0, 0));
+				cloud.translateZ(-distance_Terre_Cloud); //Décalage Terre/nuage
+
+				scene.add(cloud);
+				objectsClick.push(cloud);
+				
+				/*
+					world = data_countries;
+					console.log(world.countrie[0].geometry.coordinates);
+					console.log(world.countrie[1].geometry.coordinates);
+				*/
+			
 			}
+			
+			/*
+			===============================================================================================
+			===============================================================================================
+			*/
+			/*
+			  _______ ____  _____   ____  
+			 |__   __/ __ \|  __ \ / __ \ 
+				| | | |  | | |  | | |  | |
+				| | | |  | | |  | | |  | |
+				| | | |__| | |__| | |__| |
+				|_|  \____/|_____/ \____/ 
+			*/
+			
+			function AJAX_JSON_Req( url ) {
+						console.clear();
+				var AJAX_req = new XMLHttpRequest();
+				AJAX_req.open( "GET", url, true );
+				AJAX_req.setRequestHeader("Content-type", "application/javascript");
+			console.log("1");
+			 
+				AJAX_req.onreadystatechange = function()
+				{
+			console.log(AJAX_req.responseText);
+					if( AJAX_req.readyState == 4 && AJAX_req.status == 200 )
+					{
+						var response = JSON.parse( AJAX_req.responseText );
+						
+						//document.write( response.features[0].properties.name );
+						console.log( response.features[0].properties.name );
+				//return response
+					}
+				}
+				AJAX_req.send();
+			}
+			
+			
+			function loadJSON(callback) {   
+
+				var xobj = new XMLHttpRequest();
+				xobj.overrideMimeType("application/json");
+				xobj.open("GET", "./js/world-countries.json", true); // Replace 'my_data' with the path to your file
+				xobj.onreadystatechange = function () {
+					if (xobj.readyState == 4 && xobj.status == "200") {
+					// Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+					callback(xobj);
+					}
+				};
+				xobj.send(null);  
+			}
+
+			/*
+			===============================================================================================
+			===============================================================================================
+			*/
 
 			function Add_cloud() {
 
@@ -194,7 +386,7 @@
 					cloud.lookAt(new THREE.Vector3(0, 0, 0));
 					//A VOIR SI UTILE
 					//cloud.worldToLocal(new THREE.Vector3(0,0,0));
-					cloud.translateZ(-5); //Décalage Terre/nuage
+					cloud.translateZ(-distance_Terre_Cloud); //Décalage Terre/nuage
 
 					scene.add(cloud);
 					objectsClick.push(cloud);
@@ -236,83 +428,6 @@
 				return History_click[History_click.length - 1];
 			}
 
-			function Add_Curve(Start_position, End_position) {
-
-				console.log("ok");
-				var Second_click = History_click[History_click.length - 1].object;
-				var First_click = History_click[History_click.length - 2].object;
-
-				var point_Second = Second_click.position;
-				var point_First = First_click.position;
-
-				var distance = point_Second.distanceTo(point_First);
-				var centre = distance / 2;
-				console.log(distance);
-
-
-				centre = new THREE.Vector3();
-				centre.addVectors(Start_position, End_position).multiplyScalar(0.5);
-
-				var material = new THREE.LineBasicMaterial({
-					color: Arc_color,
-					opacity: 1
-				});
-
-				/*
-				var material = new THREE.LineDashedMaterial({
-					color: 0xffaa00,
-					dashSize: 3,
-					gapSize: 1,
-					linewidth: 2
-				});
-				*/
-
-				/*
-					Voir si le je peut définir 3 points de courbe puis faire une subdivision de c dernier
-					pour que la courbe soit en forme de "U" ou de "cloche"
-				*/
-
-				//new THREE.ArcCurve(aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise);
-				var curvePoints = new THREE.ArcCurve(0, 0, distance / 2, 0, 1.0 * Math.PI, false);
-				curvePath = new THREE.CurvePath();
-				curvePath.add(curvePoints);
-				var curveGeometry = curvePath.createPointsGeometry(2);
-				curveGeometry.computeTangents();
-				//var arc = new THREE.Line(curveGeometry, material, THREE.LinePieces);
-				var arc = new THREE.Line(curveGeometry, material);
-				arc.name = "Arc";
-
-				arc.position.set(centre.x, centre.y, centre.z);
-
-				var axe = new THREE.AxisHelper(50);
-				axe.name = "Arc_Helper";
-				scene.add(axe);
-
-				axe.position.copy(arc.position);
-				axe.lookAt(point_Second);
-				arc.rotation.copy(axe.rotation);
-				//scene.remove(axe);
-				arc.rotateY(Math.PI / 2);
-				scene.add(arc);
-			}
-
-			function Glow() {
-
-				var spriteMaterial = new THREE.SpriteMaterial({
-					map: new THREE.ImageUtils.loadTexture("img/glow.png"),
-					useScreenCoordinates: false,
-					//alignment: THREE.SpriteAlignment.center,
-					color: Earth_glow_color,
-					transparent: false,
-					blending: THREE.AdditiveBlending
-				});
-
-				var sprite = new THREE.Sprite(spriteMaterial);
-				sprite.name = "Earth_glow";
-				sprite.scale.set(80, 80, 1.0);
-				scene.add(sprite);
-			}
-
 			function onDocumentMouseMove(event) {
 
 				event.preventDefault();
@@ -331,6 +446,7 @@
 			function animate() {
 
 				var data = scene.children;
+				var data2 = scene_glow.children;
 				//Pour chaque nuage mesh dans la scene
 				for(var key in data) {
 
@@ -344,22 +460,43 @@
 						data[key].translateZ(exp);
 					}
 
+
+				}
+				//Mouvement des arcs
+				/*
+				for(var key in data2) {
+					
 					//Pour les Arc dont la syntaxe du nom est : "Arc_0123456"
 					var Regex = /^Arc_[0-9]+$/;
-					if(Regex.test(data[key].name)) {
+					if(Regex.test(data2[key].name)) {
 					
 						//Premier vertice de la courbe
-						start = data[key].geometry.vertices[0];
+						start = data2[key].geometry.vertices[0];
 						//Dernier vertice de la courbe
-						end = data[key].geometry.vertices[data[key].geometry.vertices.length-1];
+						end = data2[key].geometry.vertices[data2[key].geometry.vertices.length-1];
 						
 						//Actualisation de la position des vertices par la postion des points Start et End
-						data[key].geometry.vertices[0] = data[key].start;
-						data[key].geometry.vertices[data[key].geometry.vertices.length-1] = data[key].end;
+						//data2[key].geometry.vertices[0] = data2[key].start;
+						//data2[key].geometry.vertices[data2[key].geometry.vertices.length-1] = data2[key].end;
+						
+						for(var i=0;i<data2[key].geometry.vertices.length;i++) {
+						
+							speed = rand;
+							exp = ((Math.sin(time * speed)) / 2 * speed);
+							
+							x = data2[key].geometry.vertices[i].x - exp;
+							y = data2[key].geometry.vertices[i].y - exp;
+							z = data2[key].geometry.vertices[i].z;
+							
+						
+							data2[key].geometry.vertices[i].set(x,y,z);
+						}
+						
 						//Force la géométrie à s'actualiser
-						data[key].geometry.verticesNeedUpdate = true;
+						data2[key].geometry.verticesNeedUpdate = true;
 					}
 				}
+				*/
 
 				Orbitcontrols.update();
 				stats.update();
@@ -374,6 +511,10 @@
 				projector.unprojectVector(vector, camera);
 				renderer.setClearColor(0x000000, 0); //couleur de fond du canvas et alpha
 				renderer.render(scene, camera);
+			
+				
+				rendu_basic.render();
+				finalComposer.render();
 			}
 
 			function draw_curve(start, end) {
@@ -406,7 +547,7 @@
 				start_nd_axe.name = "start_nd_axe_" + numero;
 				start_nd_axe.position.set(start_point.x, start_point.y, start_point.z);
 				start_nd_axe.rotation.copy(axe_centre.rotation);
-				start_nd_axe.translateZ(-distance / 2);
+				start_nd_axe.translateZ(-distance / 2 - Earth_radius/2);
 				scene.add(start_nd_axe);
 				
 				//Axe end bis
@@ -414,7 +555,7 @@
 				end_nd_axe.name = "end_nd_axe_" + numero;
 				end_nd_axe.position.set(end_point.x, end_point.y, end_point.z);
 				end_nd_axe.rotation.copy(axe_centre.rotation);
-				end_nd_axe.translateZ(-distance / 2);
+				end_nd_axe.translateZ(-distance / 2 - Earth_radius/2);
 				scene.add(end_nd_axe);
 
 				//Suppression des axes
@@ -442,16 +583,49 @@
 				//Ajout de la geometry (vertices) dans un object qui affiche les lignes.
 				var line = new THREE.Line(curveGeometry, blue);
 				line.name = "Arc_" + numero;
-				//Ajout de la courbe à la scène
+
 				scene.add(line);
+				
+				/*
+					ou bien un tube avec le shader dedans
+				*/
+				
+				/*
+				
+				var customMaterial = new THREE.ShaderMaterial({
+					uniforms: {},
+					vertexShader:   document.getElementById( 'vertexShader'   ).textContent,
+					fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+					side: THREE.BackSide,
+					blending: THREE.AdditiveBlending,
+					transparent: true
+				});
+				
+				var wireFrameMat = new THREE.MeshBasicMaterial();
+				wireFrameMat.wireframe = true;
+				
+				*/
+				
+
+				var mat_for_glow = new THREE.MeshBasicMaterial( { color: 0x0088ff, transparent:true, opacity:1 } );
+
+			
+				var TubeGeometry = new THREE.TubeGeometry(curvePoints, 150, 0.1, 20, false);
+				var Tube2 = new THREE.Mesh(TubeGeometry, mat_for_glow);
+				Tube2.name ="Arc_" + numero;
+				
+				scene_glow.add(Tube2);
+				//Ajout de la courbe à la scène
 				
 				//Identifications des points
 				start.numero = numero;
 				end.numero = numero;
 				start_nd_axe.numero = numero;
 				end_nd_axe.numero = numero;
+				/*
 				line.numero = numero;
 				line.start = start.position;
 				line.end = end.position;
+				*/
 				numero ++;
 			}

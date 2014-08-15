@@ -1,10 +1,25 @@
 <!doctype html>
 <html lang="en">
 	<head>
+		<!-- Data -->
+		<script type="text/javascript" src="./js/world-countries.json"></script>
+		
 		<script src="./lib/three67.min.js"></script>
 		<script src="./lib/OrbitControls.js"></script>
 		<script src="./lib/stats.min.js"></script>		
 		<script src="./lib/DatGUI.js"></script>		
+
+		<!-- Postprocessing. -->
+		<script src="./lib/EffectComposer.js"></script>
+		<script src="./lib/RenderPass.js"></script>
+		<script src="./lib/ShaderPass.js"></script>
+		<script src="./lib/MaskPass.js"></script>
+		<script src="./lib/CopyShader.js"></script>
+		<script src="./lib/AdditiveBlendShader.js"></script>
+		<script src="./lib/HorizontalBlurShader.js"></script>
+		<script src="./lib/VerticalBlurShader.js"></script>
+		<script src="./lib/BloomPass.js"></script>	
+		
 		
 		<title>Earth Clickkkk</title>
 		
@@ -26,6 +41,25 @@
 				animate();
 			}
 		</script>
+		
+		<!-- ---------------- Custom Shader Code ------------------------ -->
+		<script id="vertexShader" type="x-shader/x-vertex">
+			varying vec3 vNormal;
+			void main() {
+				vNormal = normalize( normalMatrix * normal );
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+			}
+		</script>
+
+		<!-- fragment shader a.k.a. pixel shader -->
+		<script id="fragmentShader" type="x-shader/x-vertex"> 
+			varying vec3 vNormal;
+			void main() {
+				float intensity = pow( 0.1 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 1.0 ); 
+				gl_FragColor = vec4( 1.0, 1.0, 1.0, 1.0 ) * intensity;
+			}
+		</script>
+		<!-- ----------------------------------------------------------- -->
 	</head>
 
 	<body>
