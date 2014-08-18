@@ -20,10 +20,10 @@
 			var projector = new THREE.Projector();
 			var objectsClick = []; //Tout les objects "cliquable"
 			var History_click = []; //Les derniers objects cliqué.
-			var Earth_glow_color = "#1E7DCC";
+			var Earth_glow_color = "#17609B";
 			var Earth_segment = 50;
 			var Earth_radius = 50;
-			var distance_Terre_Cloud = 2;
+			var distance_Terre_Cloud = 0;
 			var Arc_color = "#259CFF";
 			var Cloud_glow_color = "#259CFF";
 
@@ -85,7 +85,7 @@
 
 			function latLongToVector3( lat, lon, radius, offset_height) {
 				var phi = (lat)*Math.PI/180;
-				var theta = (lon-180)*Math.PI/180;
+				var theta = (lon-180-10)*Math.PI/180;
 				var x = -(radius+offset_height) * Math.cos(phi) * Math.cos(theta);
 				var y = (radius+offset_height) * Math.sin(phi);
 				var z = (radius+offset_height) * Math.cos(phi) * Math.sin(theta);   
@@ -192,7 +192,6 @@
 				var axisHelper = new THREE.AxisHelper(100);
 				axisHelper.name = "AxisHelper";
 				scene.add(axisHelper);
-				
 
 				//Aide light Australie
 				var pointLightHelper = new THREE.PointLightHelper(light, 1);
@@ -201,15 +200,31 @@
 
 				//Modélisation de la Terre
 				var Earth_geo = new THREE.SphereGeometry(Earth_radius, Earth_segment, Earth_segment);
+
+				//Textures de la terre venant du canvas.
+				img_from_canvas = svgtocanvas.toDataURL('image/png');
+				texture = new THREE.ImageUtils.loadTexture(img_from_canvas);
+				texture.offset.set(0.0015,0);
+				
+				/*
+				setTimeout(function(){
+					if( texture != true ){
+						
+					}
+				},3000);
+				
+				*/
 				
 				//Matière de la Terre
 				var Earth_material = new THREE.MeshPhongMaterial({
-					map: THREE.ImageUtils.loadTexture("img/earthmap1k.jpg"),
-					bumpMap: THREE.ImageUtils.loadTexture("img/earthbump1k.jpg"),
-					bumpScale: 0.05,
-					specularMap: THREE.ImageUtils.loadTexture("img/earthspec1k.jpg"),
-					specular: new THREE.Color('grey'),
-					shininess: 5
+					map: texture
+					//needsUpdate: true,
+					//map: THREE.ImageUtils.loadTexture("img/2_no_clouds_8k.jpg"),
+					//bumpMap: THREE.ImageUtils.loadTexture("img/earthbump1k.jpg"),
+					//bumpScale: 0.05,
+					//specularMap: THREE.ImageUtils.loadTexture("img/earthspec1k.jpg"),
+					//specular: new THREE.Color('grey'),
+					//shininess: 5
 				});
 
 				var earth = new THREE.Mesh(Earth_geo, Earth_material);
@@ -277,8 +292,9 @@
 				window.addEventListener('mousedown', Click, false);
 				window.addEventListener('resize', onWindowResize, false);
 				
-				//var pos_Paris = latLongToVector3(48.856614, 2.3522219000000177, Earth_radius,0);
-				var pos_Paris = latLongToVector3(50.12805176, 6.04305983, Earth_radius,0);
+				
+				var pos_New_York = latLongToVector3(40.7127837, -74.00594130000002, Earth_radius,0);
+				var pos_Paris = latLongToVector3(48.856614, 2.3522219000000177, Earth_radius,0);
 			
 				var Cloud_Material = new THREE.SpriteMaterial({
 					map: new THREE.ImageUtils.loadTexture("img/glow.png"),
