@@ -23,7 +23,7 @@
 			var Earth_glow_color = "#17609B";
 			var Earth_segment = 50;
 			var Earth_radius = 50;
-			var distance_Terre_Cloud = 0;
+			var distance_Terre_Cloud = 2;
 			var Arc_color = "#259CFF";
 			var Cloud_glow_color = "#259CFF";
 
@@ -48,9 +48,15 @@
 					//indexeddb, cookie, localstorage
 
 				},
-				Link_add: function() {
+				Link_add: function(e) {
+				if(History_click[History_click.length - 1].object.name == "Earth"){
+					var p1 = History_click[History_click.length - 3].object;
+					var p2 = History_click[History_click.length - 2].object;
+				}else{
 					var p1 = History_click[History_click.length - 2].object;
 					var p2 = History_click[History_click.length - 1].object;
+				}
+					//drawCurveARC( createSphereArc(p1.position, p2.position), 0x00FFFF );
 					draw_curve(p1, p2);
 
 				},
@@ -98,6 +104,7 @@
 				/*
 					Voir si un shader serais mieux ou non
 				*/
+				/*
 				
 				var spriteMaterial = new THREE.SpriteMaterial({
 					map: new THREE.ImageUtils.loadTexture("img/glow.png"),
@@ -112,9 +119,9 @@
 				sprite.name = "Earth_glow";
 				sprite.scale.set(4*Earth_radius, 4*Earth_radius, 1.0);
 				scene.add(sprite);
+				*/
 				
 				//glsl
-				/*
 				var customMaterial = new THREE.ShaderMaterial({
 					uniforms: {},
 					vertexShader:   document.getElementById( 'vertexShader'   ).textContent,
@@ -128,6 +135,7 @@
 				var Earth_glow = new THREE.Mesh(Earth_glow_geo, customMaterial);
 				scene.add(Earth_glow);
 				
+				/*
 				*/
 			}
 			
@@ -205,15 +213,6 @@
 				img_from_canvas = svgtocanvas.toDataURL('image/png');
 				texture = new THREE.ImageUtils.loadTexture(img_from_canvas);
 				texture.offset.set(0.0015,0);
-				
-				/*
-				setTimeout(function(){
-					if( texture != true ){
-						
-					}
-				},3000);
-				
-				*/
 				
 				//Matière de la Terre
 				var Earth_material = new THREE.MeshPhongMaterial({
@@ -351,9 +350,7 @@
 					{
 						var response = JSON.parse( AJAX_req.responseText );
 						
-						//document.write( response.features[0].properties.name );
 						console.log( response.features[0].properties.name );
-				//return response
 					}
 				}
 				AJAX_req.send();
@@ -400,8 +397,6 @@
 					console.log(mouse);
 
 					cloud.lookAt(new THREE.Vector3(0, 0, 0));
-					//A VOIR SI UTILE
-					//cloud.worldToLocal(new THREE.Vector3(0,0,0));
 					cloud.translateZ(-distance_Terre_Cloud); //Décalage Terre/nuage
 
 					scene.add(cloud);
@@ -546,9 +541,11 @@
 				pos_centre.addVectors(start_point, end_point).multiplyScalar(0.5);
 
 				//Ligne bleu
+				/*
 				var blue = new THREE.LineBasicMaterial({
 					color: 0x0000FF
 				});
+				*/
 
 				//Axe pour le centre
 				var axe_centre = new THREE.AxisHelper(5);
@@ -565,7 +562,7 @@
 				start_nd_axe.rotation.copy(axe_centre.rotation);
 				start_nd_axe.translateZ(-distance / 2 - Earth_radius/2);
 				scene.add(start_nd_axe);
-				
+			
 				//Axe end bis
 				end_nd_axe = new THREE.AxisHelper(5);
 				end_nd_axe.name = "end_nd_axe_" + numero;
@@ -597,10 +594,10 @@
 				//Calcul des tangentes
 				curveGeometry.computeTangents();
 				//Ajout de la geometry (vertices) dans un object qui affiche les lignes.
-				var line = new THREE.Line(curveGeometry, blue);
-				line.name = "Arc_" + numero;
+				//var line = new THREE.Line(curveGeometry, blue);
+				//line.name = "Arc_" + numero;
 
-				scene.add(line);
+				//scene.add(line);
 				
 				/*
 					ou bien un tube avec le shader dedans
@@ -645,3 +642,46 @@
 				*/
 				numero ++;
 			}
+			
+			
+			
+function greatCircleFunction(P, Q)
+{
+	var angle = P.angleTo(Q);
+	return function(t)
+	{
+		var X = new THREE.Vector3().addVectors(
+			P.clone().multiplyScalar(Math.sin( (1 - t) * angle )), 
+			Q.clone().multiplyScalar(Math.sin(      t  * angle )))
+			.divideScalar( Math.sin(angle));
+		return X;
+	};
+}
+
+function createSphereArc(P,Q)
+{
+	var sphereArc = new THREE.Curve();
+	sphereArc.getPoint = greatCircleFunction(P,Q);
+	return sphereArc;
+}
+
+function drawCurveARC(curve)
+{
+	var lineGeometry = new THREE.Geometry();
+	lineGeometry.vertices = curve.getPoints(100);
+	lineGeometry.computeLineDistances();
+	
+	var mat_for_glow = new THREE.MeshBasicMaterial( { color: 0x0088ff, transparent:true, opacity:1 } );
+	var TubeGeometry = new THREE.TubeGeometry(curve, 150, 0.1, 20, false);
+	var Tube2 = new THREE.Mesh(TubeGeometry, mat_for_glow);
+	Tube2.name ="Arc_" + numero;
+	
+	scene_glow.add(Tube2);
+	/*
+	//sans postproccessing
+	var lineMaterial = new THREE.LineBasicMaterial();
+	lineMaterial.color = (typeof(color) === "undefined") ? new THREE.Color(0xFF0000) : new THREE.Color(color);
+	var line = new THREE.Line( lineGeometry, lineMaterial );
+	scene.add(line);
+	*/
+}

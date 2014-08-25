@@ -7,7 +7,7 @@
 <![CDATA[
 
 	.ocean{
-		fill:#1E7DCC;
+		fill:#245DC2;
 	}
 	.contour_map{
 		fill:none;
